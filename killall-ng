@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: MIT
+# Maintainer: [NAZY-OS]
+# Version: 1.02
+# This script kills all processes that match the given program names.
+
+function show_help {
+    echo "Usage: $0 [-s <signal>] <program-name1> <program-name2> ..."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help         Show this help message"
+    echo "  -v, --version      Show version information"
+    echo "  -s <signal>, --signal <signal> Specify the signal to use for killing processes"
+    echo ""
+    echo "You can specify multiple program names to kill."
+}
+
+if [ "$(id -u)" -eq 0 ]; then
+    echo "This script is running as root. Please be cautious."
+fi
+
+# Default signal
+signal=9  # Default to SIGKILL
+
+# Process options
+while getopts ":hvs:-:" opt; do
+    case $opt in
+        h)
+            show_help
+            exit 0
+            ;;
+        v)
+            echo "Version 1.0"
+            exit 0
+            ;;
+        s)
+            signal="$OPTARG"
+            if ! [[ "$signal" =~ ^[0-9]+$ ]]; then
+                echo "Invalid signal number. Please provide a valid signal."
+                exit 1
+            fi
+            ;;
+        -)
+            case "${OPTARG}" in
+                signal)
+                    read -p "Please select a signal: " signal_choice
+                    case $signal_choice in
+                        1) signal=1; echo "Signal: SIGHUP";;
+                        2) signal=2; echo "Signal: SIGINT";;
+                        3) signal=3; echo "Signal: SIGQUIT";;
+                        4) signal=15; echo "Signal: SIGTERM";;
+                        5) signal=9; echo "Signal: SIGKILL";;
+                        6) signal=19; echo "Signal: SIGSTOP";;
+                        7) signal=18; echo "Signal: SIGCONT";;
+                        8) signal=4; echo "Signal: SIGILL";;
+                        9) signal=6; echo "Signal: SIGABRT";;
+                        10) signal=8; echo "Signal: SIGFPE";;
+                        11) signal=11; echo "Signal: SIGSEGV";;
+                        12) signal=13; echo "Signal: SIGPIPE";;
+                        13) signal=30; echo "Signal: SIGUSR1";;
+                        14) signal=31; echo "Signal: SIGUSR2";;
+                        15) signal=34; echo "Signal: SIGSTKFL";;
+                        16) signal=17; echo "Signal: SIGCHLD";;
+                        17) signal=20; echo "Signal: SIGTTIN";;
+                        18) signal=21; echo "Signal: SIGTTOU";;
+                        *) echo "Invalid selection!"; exit 1;;
+                    esac
+                    ;;
+                *)
+                    echo "Invalid option: --$OPTARG";;
+            esac
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG";;
+        :)
+            echo "Option -$OPTARG requires an argument.";;
+    esac
+done
+
+shift $((OPTIND -1))  # Remove processed options from positional parameters
+
+if [ -z "$1" ]; then
+    echo "Please provide at least one program name."
+    exit 1
+fi
+
+# Loop until all specified processes are killed
+while true; do
+    all_killed=true  # Assume all processes are killed
+    echo -e "\nProcesses to be killed:"
+
+    for prog in "$@"; do
+        pids=$(pidof "$prog")
+
+        if [ -n "$pids" ]; then
+            echo -e "\nFound PID(s) for '$prog':"
+            echo "--------------------------------------"
+
+            # Show command line for each PID
+            for pid in $pids; do
+                cmdline=$(ps -p $pid -o cmd=)
+                echo -e "PID: $pid\nCommand Line: $cmdline\n"
+            done
+
+            echo "--------------------------------------"
+            read -p "Do you really want to kill these processes? (yes/no) " confirmation
+            if [[ "$confirmation" == "yes" || -z "$confirmation" ]]; then
+                # Use the selected signal to terminate the processes
+                kill -"${signal}" $pids 2>/dev/null
+                
+                if [ $? -eq 0 ]; then
+                    echo "Successfully killed process(es) for '$prog'."
+                else
+                    echo "Failed to kill process(es) for '$prog'."
+                fi
+                all_killed=false  # Mark that not all processes are killed
+            fi
+        else
+            echo "No process found for '$prog'."
+        fi
+    done
+
+    # Break the loop if all specified processes are killed
+    if $all_killed; then
+        break
+    fi
+
+    # Optional: Wait for a moment before checking again
+    sleep 1
+done
+
+echo "All specified processes have been killed."
