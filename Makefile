@@ -1,70 +1,119 @@
-# Makefile
+# Generic Makefile Template
+# =========================
 
-PROGRAM_NAME := killall-ng
-DEST := /sbin/$(PROGRAM_NAME)
+# Variables
+# ---------
+PROGRAM_NAME ?= killall-ng
+DEST ?= /sbin/$(PROGRAM_NAME)
 INSTALLED_FILE := $(DEST)
+SRC ?= ./$(PROGRAM_NAME)
 
-SRC := ./$(PROGRAM_NAME)
+# Phony Targets
+.PHONY: help install deinstall remove install-all remove-silent install-silent help-h help---help
 
-.PHONY: help install deinstall install-all
-
-HELP_TEXT := "Usage: make <target>\n\n" \
-"Variables:\n" \
-"  PROGRAM_NAME (source/program to install): $(PROGRAM_NAME)\n" \
-"  SRC  : $(SRC)\n" \
-"  DEST : $(DEST)\n\n" \
-"Targets:\n" \
-"  make install      -> checks root + asks YES/NO\n" \
-"  make deinstall    -> checks root + asks YES/NO\n" \
-"  make install-all  -> installs and deinstalls (no prompts)\n"
+# Help text (mit doppelten \n für Zeilenumbrüche)
+HELP_TEXT := Usage:\n\
+  make help          # Show this help message\n\
+  make install       # Install with YES/NO prompt\n\
+  make deinstall     # Uninstall with YES/NO prompt\n\
+  make remove        # Alias for deinstall\n\
+  make install-all   # Install without prompt\n\
+  make remove-silent # Uninstall without prompt\n\
+  make install-silent # Install without prompt\n\
+  make -h            # Show help (short form)\n\
+  make --help        # Show help (long form)\n
 
 help:
-	@printf "%b" "$(HELP_TEXT)"
+	@echo -e "$(HELP_TEXT)"
+
+help-h:
+	@$(MAKE) help
+
+help---help:
+	@$(MAKE) help
 
 check-root:
 	@if [ "$$(id -u)" -ne 0 ]; then \
-		echo "You have not the rights."; \
+		echo "Error: Root privileges required"; \
 		exit 1; \
 	fi
 
+check-source:
+	@if [ ! -f "$(SRC)" ]; then \
+		echo "Error: Source file $(SRC) not found"; \
+		exit 1; \
+	fi
+
+do-install: check-source
+	@echo "Installing $(PROGRAM_NAME) from $(SRC) to $(DEST) ..."; \
+	install -m 0755 -o root -g root "$(SRC)" "$(INSTALLED_FILE)"; \
+	echo "OK: $(PROGRAM_NAME) successfully installed to $(DEST)"; \
+	echo "Installation completed successfully"
+
+do-deinstall:
+	@if [ ! -e "$(INSTALLED_FILE)" ]; then \
+		echo "Nothing to remove: $(INSTALLED_FILE) does not exist"; \
+	else \
+		echo "Uninstalling $(PROGRAM_NAME) from $(DEST) ..."; \
+		rm -f "$(INSTALLED_FILE)"; \
+		echo "OK: $(PROGRAM_NAME) successfully removed from $(DEST)"; \
+		echo "Uninstallation completed successfully"; \
+	fi
+
 install: check-root
-	@printf "Do you really want to install? (Type YES or NO) > "; \
-	read ans; \
-	case "$$ans" in \
-		YES|yes|Y|y ) \
-			if [ ! -f "$(SRC)" ]; then \
-				echo "Missing source file: $(SRC)"; \
-				exit 1; \
-			fi; \
-			echo "Installing to $(DEST) ..."; \
-			install -m 0755 -o root -g root "$(SRC)" "$(INSTALLED_FILE)"; \
-			;; \
-		NO|no|N|n ) \
-			echo "Cancelled (no installation)."; \
-			;; \
-		* ) \
-			echo "Invalid input. Please type YES or NO."; \
-			exit 1; \
-			;; \
-	esac
+	@echo "=== Installing $(PROGRAM_NAME) ==="
+	@while : ; do \
+		printf "Install $(PROGRAM_NAME)? (YES/NO) > " ; \
+		read ans; \
+		case "$$ans" in \
+			YES|NO|Y|N) \
+				if [ "$$ans" = "YES" ] || [ "$$ans" = "Y" ]; then \
+					$(MAKE) do-install; \
+				else \
+					echo "Installation of $(PROGRAM_NAME) cancelled"; \
+				fi; \
+				break ;; \
+			*) \
+				if [ $$REPLY = "y" ] || [ $$REPLY = "n" ]; then \
+					echo "Please use UPPERCASE letters (YES/NO)"; \
+				else \
+					echo "Invalid input. Please type YES or NO (uppercase)"; \
+				fi;; \
+		esac; \
+	done
 
 deinstall: check-root
-	@printf "Do you really want to deinstall? (Type YES or NO) > "; \
-	read ans; \
-	case "$$ans" in \
-		YES|yes|Y|y ) \
-			echo "Deinstalling from $(DEST) ..."; \
-			rm -f "$(INSTALLED_FILE)"; \
-			;; \
-		NO|no|N|n ) \
-			echo "Cancelled (no deinstallation)."; \
-			;; \
-		* ) \
-			echo "Invalid input. Please type YES or NO."; \
-			exit 1; \
-			;; \
-	esac
+	@echo "=== Uninstalling $(PROGRAM_NAME) ==="
+	@while : ; do \
+		printf "Uninstall $(PROGRAM_NAME)? (YES/NO) > " ; \
+		read ans; \
+		case "$$ans" in \
+			YES|NO|Y|N) \
+				if [ "$$ans" = "YES" ] || [ "$$ans" = "Y" ]; then \
+					$(MAKE) do-deinstall; \
+				else \
+					echo "Uninstallation of $(PROGRAM_NAME) cancelled"; \
+				fi; \
+				break ;; \
+			*) \
+				if [ $$REPLY = "y" ] || [ $$REPLY = "n" ]; then \
+					echo "Please use UPPERCASE letters (YES/NO)"; \
+				else \
+					echo "Invalid input. Please type YES or NO (uppercase)"; \
+				fi;; \
+		esac; \
+	done
 
-install-all: check-root
-	@$(MAKE) install </dev/null
-	@$(MAKE) deinstall </dev/null
+remove: deinstall
+
+install-all: check-root check-source
+	@echo "=== Automatic installation of $(PROGRAM_NAME) ==="
+	@$(MAKE) do-install
+
+remove-silent: check-root
+	@echo "=== Automatic uninstallation of $(PROGRAM_NAME) ==="
+	@$(MAKE) do-deinstall
+
+install-silent: check-root check-source
+	@echo "=== Automatic installation of $(PROGRAM_NAME) ==="
+	@$(MAKE) do-install
