@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: MIT
 # Maintainer: [NAZY-OS]
-# Version: 1.02
+# Version: 1.03
 # This script kills all processes that match the given program names.
 
 function show_help {
@@ -105,16 +105,25 @@ while true; do
 
             echo "--------------------------------------"
             read -p "Do you really want to kill these processes? (yes/no) " confirmation
-            if [[ "$confirmation" == "yes" || -z "$confirmation" ]]; then
-                # Use the selected signal to terminate the processes
-                kill -"${signal}" $pids 2>/dev/null
-                
-                if [ $? -eq 0 ]; then
-                    echo "Successfully killed process(es) for '$prog'."
-                else
-                    echo "Failed to kill process(es) for '$prog'."
-                fi
-                all_killed=false  # Mark that not all processes are killed
+            if [[ "$confirmation" =~ ^[yYnN]|^$|^yes$|^no$|^YES$|^NO$ ]]; then
+                case "$confirmation" in
+                    y|Y|yes|YES|"")
+                        # Use the selected signal to terminate the processes
+                        kill -"${signal}" $pids 2>/dev/null
+
+                        if [ $? -eq 0 ]; then
+                            echo "Successfully killed process(es) for '$prog'."
+                        else
+                            echo "Failed to kill process(es) for '$prog'."
+                        fi
+                        all_killed=false  # Mark that not all processes are killed
+                        ;;
+                    n|N|no|NO)
+                        echo "Skipping killing process(es) for '$prog'."
+                        ;;
+                esac
+            else
+                echo "Invalid input. Please answer with yes/no or y/n."
             fi
         else
             echo "No process found for '$prog'."
