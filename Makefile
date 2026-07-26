@@ -4,7 +4,7 @@
 # Variables
 # ---------
 PROGRAM_NAME ?= killall-ng
-DEST ?= /sbin/$(PROGRAM_NAME)
+DEST ?= /bin/$(PROGRAM_NAME)
 INSTALLED_FILE := $(DEST)
 SRC ?= ./$(PROGRAM_NAME)
 
