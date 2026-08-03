@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: MIT
 # Maintainer: [NAZY-OS]
-# Version: 1.03
+# Version: 1.04
 # This script kills all processes that match the given program names.
 
 function show_help {
@@ -91,15 +91,24 @@ while true; do
     echo -e "\nProcesses to be killed:"
 
     for prog in "$@"; do
-        pids=$(pidof "$prog")
-
+        # Check macOS or use Linux/BSD
+        if [  "$(uname)" = "Darwin" ]; then
+            pids=$(pgrep -x "$prog")
+        else
+            pids=$(pidof "$prog")
+        fi
         if [ -n "$pids" ]; then
             echo -e "\nFound PID(s) for '$prog':"
             echo "--------------------------------------"
 
             # Show command line for each PID
             for pid in $pids; do
-                cmdline=$(ps -p $pid -o cmd=)
+                # Check macOS or use Linux/BSD
+                if [  "$(uname)" = "Darwin" ]; then
+                    cmdline=$(ps -p $pid -o command | tail -n +2)
+                else
+                    cmdline=$(ps -p $pid -o cmd=)
+                fi
                 echo -e "PID: $pid\nCommand Line: $cmdline\n"
             done
 
