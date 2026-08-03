@@ -24,7 +24,7 @@ fi
 signal=9  # Default to SIGKILL
 
 # Process options
-while getopts ":hvs:-:" opt; do
+while getopts "hvs:-:" opt; do
     case $opt in
         h)
             show_help
@@ -92,7 +92,7 @@ while true; do
 
     for prog in "$@"; do
         # Check macOS or use Linux/BSD
-        if [  "$(uname)" = "Darwin" ]; then
+        if [ "$(uname)" = "Darwin" ]; then
             pids=$(pgrep -x "$prog")
         else
             pids=$(pidof "$prog")
@@ -104,7 +104,7 @@ while true; do
             # Show command line for each PID
             for pid in $pids; do
                 # Check macOS or use Linux/BSD
-                if [  "$(uname)" = "Darwin" ]; then
+                if [ "$(uname)" = "Darwin" ]; then
                     cmdline=$(ps -p $pid -o command | tail -n +2)
                 else
                     cmdline=$(ps -p $pid -o cmd=)
